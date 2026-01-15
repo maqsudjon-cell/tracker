@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IELTS Error Analysis →from pangeya</title>
+
+  <style>
+    :root{
+      --bg:#0b0b14; --card:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.14);
+      --text:#eaeaf3; --muted:#a5a5c3; --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:
+        radial-gradient(900px 500px at 10% 10%, rgba(168,85,247,.18), transparent 60%),
+        radial-gradient(900px 500px at 90% 20%, rgba(34,197,94,.12), transparent 60%),
+        linear-gradient(180deg, #070716, var(--bg));
+      color:var(--text); min-height:100vh; padding:18px;
+      display:flex; justify-content:center;
+    }
+    .wrap{width:100%; max-width:1180px}
+    .card{
+      border:1px solid var(--stroke); background:var(--card);
+      border-radius:var(--radius); padding:14px; backdrop-filter: blur(8px);
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+    h1{margin:0 0 8px; font-size:18px}
+    .muted{color:var(--muted); font-size:13px; line-height:1.4}
+    .grid{display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px}
+    label{display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--muted)}
+    input, textarea, select, button{
+      border-radius:12px; border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05); color:var(--text);
+      padding:12px; font-size:14px; outline:none;
+    }
+    textarea{min-height:90px; resize:vertical}
+    .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center}
+    button{
+      cursor:pointer; font-weight:800; transition:.15s ease;
+      display:inline-flex; gap:8px; align-items:center
+    }
+    button:hover{transform:translateY(-1px)}
+    .btnOk{border-color: rgba(185,255,207,.25)}
+    .btnWarn{border-color: rgba(255,215,166,.25)}
+    .btnDanger{border-color: rgba(255,179,179,.25)}
+    .right{margin-left:auto}
+    .status{margin-top:10px; font-size:13px; color:rgba(255,255,255,.75)}
+
+    .tblWrap{
+      margin-top:12px;
+      overflow:auto;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+    }
+    table{width:100%; border-collapse:collapse; font-size:13px; min-width: 1180px;}
+    th, td{border-bottom:1px solid rgba(255,255,255,.10); padding:10px; vertical-align:top}
+    th{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.75)}
+    td textarea{min-height:64px}
+    .mini{font-size:12px; color:rgba(255,255,255,.6)}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-size:12px; color:rgba(255,255,255,.75);
+    }
+
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr}
+      table{min-width: 1180px;} /* mobile: horizontal scroll, keeps laptop-like table */
+      .right{margin-left:0}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>IELTS Error Analysis →from pangeya</h1>
+      <div class="muted">
+        Fill in your errors → download a <b>Teacher Report</b> → send it to your teacher.
+        The teacher can open it and click <b>Print → Save as PDF</b>.
+      </div>
+
+      <div class="grid">
+        <label>Student name
+          <input id="studentName" placeholder="Maqsudjon" />
+        </label>
+        <label>Test date
+          <input id="testDate" type="date" />
+        </label>
+        <label>Test name / details
+          <input id="testName" placeholder="Listening — Cambridge 18 Test 3" />
+        </label>
+        <label>Score (e.g., 32/40 or Band 7.0)
+          <input id="score" placeholder="32/40" />
+        </label>
+      </div>
+
+      <div class="row">
+        <button class="btnOk" id="addRow">➕ Add row</button>
+        <button class="btnWarn" id="downloadReport">Download Report</button>
+        <span class="pill">Tip: On phone, scroll the table left/right.</span>
+        <button class="btnDanger right" id="clearAll"> Clear</button>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="tblWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px">#</th>
+              <th style="width:110px">Q / Task</th>
+              <th style="width:180px">Correct / Model</th>
+              <th style="width:180px">My answer</th>
+              <th style="width:280px">Error type (IELTS)</th>
+              <th style="width:240px">Reason (why?)</th>
+              <th style="width:240px">Next time (plan)</th>
+              <th style="width:80px">Del</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:14px">
+        <label>Overall summary (for teacher)
+          <textarea id="summary" placeholder="Most frequent errors... Weakest skills... Plan for next week..."></textarea>
+        </label>
+        <div class="mini">Long text is OK — it stays readable in the teacher report and PDF.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const LS = "IELTS_TEACHER_REPORT_EN_FULL_V2";
+  const $ = (id) => document.getElementById(id);
+
+  const el = {
+    studentName: $("studentName"),
+    testDate: $("testDate"),
+    testName: $("testName"),
+    score: $("score"),
+    summary: $("summary"),
+    tbody: $("tbody"),
+    status: $("status"),
+    addRow: $("addRow"),
+    downloadReport: $("downloadReport"),
+    openPrint: $("openPrint"),
+    clearAll: $("clearAll"),
+  };
+
+  let state = {
+    meta: { studentName:"", testDate:"", testName:"", score:"", summary:"" },
+    rows: []
+  };
+
+  function todayISO(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
+  function setStatus(msg){ el.status.innerHTML = msg; }
+
+  function escapeHtml(s){
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
+  function escapeAttr(s){
+    return (s ?? "").toString()
+      .replaceAll("&","&amp;").replaceAll("\"","&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  }
+
+  function save(){
+    state.meta.studentName = el.studentName.value || "";
+    state.meta.testDate = el.testDate.value || "";
+    state.meta.testName = el.testName.value || "";
+    state.meta.score = el.score.value || "";
+    state.meta.summary = el.summary.value || "";
+    localStorage.setItem(LS, JSON.stringify(state));
+  }
+
+  function load(){
+    try{
+      const data = JSON.parse(localStorage.getItem(LS) || "null");
+      if(data && typeof data === "object") state = data;
+    }catch(e){}
+    if(!state.meta.testDate) state.meta.testDate = todayISO();
+    el.studentName.value = state.meta.studentName || "";
+    el.testDate.value = state.meta.testDate || todayISO();
+    el.testName.value = state.meta.testName || "";
+    el.score.value = state.meta.score || "";
+    el.summary.value = state.meta.summary || "";
+  }
+
+  // Expanded IELTS error types: Listening + Reading + Writing (T1/T2) + General
+  function optionList(selected){
+    const opts = [
+      // Listening
+      "Listening — Spelling",
+      "Listening — Singular / Plural",
+      "Listening — Word form",
+      "Listening — Misheard / similar sounds",
+      "Listening — Missed detail (key info)",
+      "Listening — Numbers / dates / time format",
+      "Listening — Distractor trap",
+      "Listening — Lost concentration",
+      "Listening — Ignored instructions (word limit, etc.)",
+      "Listening — Prediction failure (didn't predict)",
+
+      // Reading
+      "Reading — True/False/Not Given confusion",
+      "Reading — Yes/No/Not Given confusion",
+      "Reading — Matching headings confusion",
+      "Reading — Matching information/features confusion",
+      "Reading — Multiple choice trap (distractor)",
+      "Reading — Paraphrase not understood (synonyms)",
+      "Reading — Keyword match only (missed meaning)",
+      "Reading — Scanning issue (slow / wrong location)",
+      "Reading — Time management (ran out of time)",
+      "Reading — Answer format / word limit",
+      "Reading — Spelling / word form in answer",
+
+      // Writing Task 1
+      "Writing Task 1 — Overview missing / unclear",
+      "Writing Task 1 — Key features missed (wrong selection)",
+      "Writing Task 1 — Comparisons missing / weak",
+      "Writing Task 1 — Too much detail / irrelevant detail",
+      "Writing Task 1 — Grammar (tenses/articles/prepositions)",
+      "Writing Task 1 — Vocabulary (wrong word / repetition)",
+      "Writing Task 1 — Cohesion (linking / paragraphing)",
+      "Writing Task 1 — Tone (formal/informal)",
+
+      // Writing Task 2
+      "Writing Task 2 — Off-topic / not fully answered",
+      "Writing Task 2 — Position unclear / no clear opinion",
+      "Writing Task 2 — Weak ideas / underdeveloped examples",
+      "Writing Task 2 — Coherence & cohesion (poor structure)",
+      "Writing Task 2 — Paragraphing problem",
+      "Writing Task 2 — Grammar accuracy",
+      "Writing Task 2 — Vocabulary / collocations",
+      "Writing Task 2 — Repetition (ideas/words)",
+      "Writing Task 2 — Too short / too long",
+      "Writing Task 2 — Complex sentences went wrong",
+
+      // General
+      "General — Careless mistake",
+      "General — Review needed (rules/vocab)",
+      "General — Other"
+    ];
+    return opts.map(o => `<option ${o===selected?'selected':''}>${o}</option>`).join("");
+  }
+
+  function addEmptyRow(){
+    state.rows.push({
+      q:"", correct:"", mine:"",
+      type:"Listening — Spelling",
+      reason:"", plan:""
+    });
+    render(); save();
+  }
+
+  function delRow(idx){
+    state.rows.splice(idx,1);
+    render(); save();
+  }
+
+  function render(){
+    el.tbody.innerHTML = "";
+    if(!state.rows.length){
+      el.tbody.innerHTML = `<tr><td colspan="8" style="color:rgba(255,255,255,.7)">No rows yet. Click <b>Add row</b>.</td></tr>`;
+      setStatus("Ready ✅");
+      return;
+    }
+    state.rows.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td><input data-k="q" data-i="${idx}" placeholder="1–40 / T1 / T2" value="${escapeAttr(r.q)}"></td>
+        <td><input data-k="correct" data-i="${idx}" value="${escapeAttr(r.correct)}"></td>
+        <td><input data-k="mine" data-i="${idx}" value="${escapeAttr(r.mine)}"></td>
+        <td><select data-k="type" data-i="${idx}">${optionList(r.type)}</select></td>
+        <td><textarea data-k="reason" data-i="${idx}">${escapeHtml(r.reason)}</textarea></td>
+        <td><textarea data-k="plan" data-i="${idx}">${escapeHtml(r.plan)}</textarea></td>
+        <td><button class="btnDanger" data-del="${idx}">🗑</button></td>
+      `;
+      el.tbody.appendChild(tr);
+    });
+    setStatus(`Rows: <b>${state.rows.length}</b> ✅`);
+  }
+
+  // Inputs
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if(t.matches("input[data-k], textarea[data-k], select[data-k]")){
+      const i = Number(t.getAttribute("data-i"));
+      const k = t.getAttribute("data-k");
+      state.rows[i][k] = t.value;
+      save();
+    }
+    if(t === el.studentName || t === el.testDate || t === el.testName || t === el.score || t === el.summary){
+      save();
+    }
+  });
+
+  el.tbody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-del]");
+    if(!btn) return;
+    const idx = Number(btn.getAttribute("data-del"));
+    if(confirm("Delete this row?")) delRow(idx);
+  });
+
+  el.addRow.onclick = addEmptyRow;
+
+  el.clearAll.onclick = () => {
+    if(!confirm("Clear everything?")) return;
+    state = { meta:{ studentName:"", testDate: todayISO(), testName:"", score:"", summary:"" }, rows: [] };
+    save(); load(); render();
+  };
+
+  // Teacher report: SAME table on phone & laptop (horizontal scroll on phone)
+  function buildTeacherReportHTML(){
+    const meta = {
+      studentName: el.studentName.value || "",
+      testDate: el.testDate.value || "",
+      testName: el.testName.value || "",
+      score: el.score.value || "",
+      summary: el.summary.value || ""
+    };
+
+    const rows = state.rows.map((r, idx) => `
+      <tr>
+        <td>${idx+1}</td>
+        <td>${escapeHtml(r.q)}</td>
+        <td>${escapeHtml(r.correct)}</td>
+        <td>${escapeHtml(r.mine)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.reason)}</td>
+        <td>${escapeHtml(r.plan)}</td>
+      </tr>
+    `).join("");
+
+    const title = `IELTS Error Analysis Report`;
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${title}</title>
+<style>
+  body{margin:0; font-family:Arial, sans-serif; background:#fff; color:#111; padding:18px;}
+  .wrap{max-width:1100px; margin:0 auto;}
+  h1{margin:0; font-size:18px;}
+  .meta{margin-top:10px; border:1px solid #ddd; border-radius:12px; padding:12px;}
+  .metaGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .k{font-size:12px; color:#555;}
+  .v{font-size:14px; font-weight:700; margin-top:4px; white-space:pre-wrap; word-break:break-word;}
+  .actions{margin-top:12px;}
+  button{cursor:pointer; border:1px solid #ddd; background:#fff; padding:10px 12px; border-radius:10px; font-weight:700}
+
+  .tableWrap{
+    margin-top:14px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling: touch;
+    border:1px solid #ddd;
+    border-radius:12px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    min-width: 980px; /* keeps laptop-like layout on phone */
+  }
+  th, td{
+    border:1px solid #ddd;
+    padding:8px;
+    vertical-align:top;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  th{background:#f2f2f2; text-align:left;}
+
+  .summary{margin-top:14px; border:1px solid #ddd; border-radius:12px; padding:12px;}
+
+  @media (max-width: 640px){
+    body{padding:14px;}
+    .metaGrid{grid-template-columns:1fr;}
+    table{font-size:11px;}
+  }
+
+  @media print{
+    .actions{display:none;}
+    body{padding:0;}
+    .wrap{max-width:none;}
+    .tableWrap{overflow:visible; border:none;}
+    table{min-width:0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>${title}</h1>
+  <div class="actions">
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <div class="meta">
+    <div class="metaGrid">
+      <div><div class="k">Student</div><div class="v">${escapeHtml(meta.studentName)}</div></div>
+      <div><div class="k">Date</div><div class="v">${escapeHtml(meta.testDate)}</div></div>
+      <div><div class="k">Test</div><div class="v">${escapeHtml(meta.testName)}</div></div>
+      <div><div class="k">Score</div><div class="v">${escapeHtml(meta.score)}</div></div>
+    </div>
+  </div>
+
+  <div class="tableWrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th style="width:90px">Q/Task</th>
+          <th>Correct/Model</th>
+          <th>My answer</th>
+          <th style="width:220px">Error type</th>
+          <th>Reason</th>
+          <th>Plan</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="7" style="color:#666">No rows.</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="summary">
+    <div class="k">Overall summary</div>
+    <div class="v">${escapeHtml(meta.summary)}</div>
+  </div>
+</div>
+</body>
+</html>`;
+  }
+
+  function downloadTextFile(text, filename, mime="text/html;charset=utf-8"){
+    const blob = new Blob([text], {type:mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+
+  el.downloadReport.onclick = () => {
+    save();
+    const html = buildTeacherReportHTML();
+    const d = el.testDate.value || todayISO();
+    const fname = `IELTS_Teacher_Report_${d}.html`;
+    downloadTextFile(html, fname);
+    setStatus(`✅ Report created: <b>${fname}</b> (send to your teacher).`);
+  };
+
+  el.openPrint.onclick = () => {
+    save();
+    const html = buildTeacherReportHTML();
+    const w = window.open("", "_blank");
+    if(!w){ setStatus("⚠️ Popup blocked. Please allow popups in your browser."); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setStatus("🖨 Report opened. Click Print → Save as PDF.");
+  };
+
+  // Init
+  load();
+  if(!el.testDate.value) el.testDate.value = todayISO();
+  render();
+  setStatus("Ready ✅");
+</script>
+</body>
+</html>
