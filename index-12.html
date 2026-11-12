@@ -469,7 +469,7 @@
     setStatus(`✅ Report created: <b>${fname}</b> (send to your teacher).`);
   };
 
-  el.openPrint.onclick = () => {
+  if (el.openPrint) el.openPrint.onclick = () => {
     save();
     const html = buildTeacherReportHTML();
     const w = window.open("", "_blank");
